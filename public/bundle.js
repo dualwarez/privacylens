@@ -126,6 +126,9 @@
       return template;
     }
   }
+  function jsonEval(str) {
+    return JSON.parse(str);
+  }
   function deepEqual(a, b) {
     if (a === b) {
       return true;
@@ -163,7 +166,7 @@
       return service;
     }
   }
-  var stringToByteArray$1, byteArrayToString, base64, DecodeBase64StringError, base64Encode, base64urlEncodeWithoutPadding, base64Decode, getDefaultsFromGlobal, getDefaultsFromEnvVariable, getDefaultsFromCookie, getDefaults, getDefaultAppConfig, Deferred, ERROR_NAME, FirebaseError, ErrorFactory, MAX_VALUE_MILLIS;
+  var stringToByteArray$1, byteArrayToString, base64, DecodeBase64StringError, base64Encode, base64urlEncodeWithoutPadding, base64Decode, getDefaultsFromGlobal, getDefaultsFromEnvVariable, getDefaultsFromCookie, getDefaults, getDefaultAppConfig, Deferred, ERROR_NAME, FirebaseError, ErrorFactory, decode, issuedAtTime, MAX_VALUE_MILLIS;
   var init_index_esm = __esm({
     "node_modules/@firebase/util/dist/index.esm.js"() {
       init_postinstall();
@@ -510,6 +513,31 @@
           const error = new FirebaseError(fullCode, fullMessage, customData);
           return error;
         }
+      };
+      decode = function(token) {
+        let header = {}, claims = {}, data = {}, signature = "";
+        try {
+          const parts = token.split(".");
+          header = jsonEval(base64Decode(parts[0]) || "");
+          claims = jsonEval(base64Decode(parts[1]) || "");
+          signature = parts[2];
+          data = claims["d"] || {};
+          delete claims["d"];
+        } catch (e) {
+        }
+        return {
+          header,
+          claims,
+          data,
+          signature
+        };
+      };
+      issuedAtTime = function(token) {
+        const claims = decode(token).claims;
+        if (typeof claims === "object" && claims.hasOwnProperty("iat")) {
+          return claims["iat"];
+        }
+        return null;
       };
       MAX_VALUE_MILLIS = 4 * 60 * 60 * 1e3;
     }
@@ -4484,7 +4512,7 @@ Firebase CLI install instructions: https://firebase.google.com/docs/cli
     ));
     registerVersion(name4, version3);
   }
-  var APP_CHECK_STATES, DEFAULT_STATE, DEBUG_STATE, BASE_ENDPOINT, EXCHANGE_DEBUG_TOKEN_METHOD, TOKEN_REFRESH_TIME, ONE_DAY, Refresher, ERRORS2, ERROR_FACTORY2, DB_NAME2, DB_VERSION2, STORE_NAME2, DEBUG_TOKEN_KEY, dbPromise2, logger3, defaultTokenErrorData, AppCheckService, name4, version3, APP_CHECK_NAME, APP_CHECK_NAME_INTERNAL;
+  var APP_CHECK_STATES, DEFAULT_STATE, DEBUG_STATE, BASE_ENDPOINT, EXCHANGE_DEBUG_TOKEN_METHOD, TOKEN_REFRESH_TIME, ONE_DAY, Refresher, ERRORS2, ERROR_FACTORY2, DB_NAME2, DB_VERSION2, STORE_NAME2, DEBUG_TOKEN_KEY, dbPromise2, logger3, defaultTokenErrorData, AppCheckService, name4, version3, CustomProvider, APP_CHECK_NAME, APP_CHECK_NAME_INTERNAL;
   var init_index_esm8 = __esm({
     "node_modules/@firebase/app-check/dist/esm/index.esm.js"() {
       init_index_esm4();
@@ -4650,6 +4678,36 @@ Firebase CLI install instructions: https://firebase.google.com/docs/cli
       };
       name4 = "@firebase/app-check";
       version3 = "0.13.1";
+      CustomProvider = class _CustomProvider {
+        constructor(_customProviderOptions) {
+          this._customProviderOptions = _customProviderOptions;
+        }
+        /**
+         * @internal
+         */
+        async getToken() {
+          const customToken = await this._customProviderOptions.getToken();
+          const issuedAtTimeSeconds = issuedAtTime(customToken.token);
+          const issuedAtTimeMillis = issuedAtTimeSeconds !== null && issuedAtTimeSeconds < Date.now() && issuedAtTimeSeconds > 0 ? issuedAtTimeSeconds * 1e3 : Date.now();
+          return { ...customToken, issuedAtTimeMillis };
+        }
+        /**
+         * @internal
+         */
+        initialize(app) {
+          this._app = app;
+        }
+        /**
+         * @internal
+         */
+        isEqual(otherProvider) {
+          if (otherProvider instanceof _CustomProvider) {
+            return this._customProviderOptions.getToken.toString() === otherProvider._customProviderOptions.getToken.toString();
+          } else {
+            return false;
+          }
+        }
+      };
       APP_CHECK_NAME = "app-check";
       APP_CHECK_NAME_INTERNAL = "app-check-internal";
       registerAppCheck();
@@ -4680,7 +4738,12 @@ Firebase CLI install instructions: https://firebase.google.com/docs/cli
       };
       var firebaseApp = initializeApp(firebaseConfig);
       self.FIREBASE_APPCHECK_DEBUG_TOKEN = "privacylens-hybrid-debug-2026";
-      initializeAppCheck(firebaseApp, { isTokenAutoRefreshEnabled: true });
+      initializeAppCheck(firebaseApp, {
+        provider: new CustomProvider({
+          getToken: () => Promise.resolve({ token: self.FIREBASE_APPCHECK_DEBUG_TOKEN })
+        }),
+        isTokenAutoRefreshEnabled: true
+      });
       var state = {
         running: false,
         modelReady: false,

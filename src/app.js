@@ -4,7 +4,7 @@
 
 import { initializeApp } from "firebase/app";
 import { getAI, getGenerativeModel, GoogleAIBackend, InferenceMode } from "firebase/ai";
-import { initializeAppCheck } from "firebase/app-check";
+import { initializeAppCheck, CustomProvider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDzuDJY6-JjINLaIaOzmhTtxO7pEgSKvwA",
@@ -19,9 +19,14 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 
 // App Check: debug token mode — hackathon rules accept debug tokens.
-// The fixed token below is registered in the Firebase console (App Check > Manage debug tokens).
+// The fixed token below must be registered in Firebase console (App Check > Manage debug tokens).
 self.FIREBASE_APPCHECK_DEBUG_TOKEN = 'privacylens-hybrid-debug-2026';
-initializeAppCheck(firebaseApp, { isTokenAutoRefreshEnabled: true });
+initializeAppCheck(firebaseApp, {
+  provider: new CustomProvider({
+    getToken: () => Promise.resolve({ token: self.FIREBASE_APPCHECK_DEBUG_TOKEN }),
+  }),
+  isTokenAutoRefreshEnabled: true,
+});
 
 /* ---------- state ---------- */
 const state = {
