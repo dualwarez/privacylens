@@ -1,0 +1,20 @@
+{
+  "name": "privacylens",
+  "version": "1.0.0",
+  "description": "PrivacyLens — privacy-first hybrid AI. Your sensitive text is analyzed on-device (Gemini Nano) when possible; complex tasks transparently fall back to cloud. #BuildHybridAI entry.",
+  "main": "public/index.html",
+  "scripts": {
+    "start": "npx serve public -l 3000"
+  },
+  "license": "Apache-2.0",
+  "keywords": [],
+  "author": "",
+  "type": "commonjs",
+  "dependencies": {
+    "esbuild": "^0.28.2",
+    "firebase": "^13.2.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
