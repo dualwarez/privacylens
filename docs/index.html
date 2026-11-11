@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrivacyLens — Private AI that stays on your device | #BuildHybridAI</title>
+  <meta name="description" content="Paste sensitive text — medical notes, legal docs, financial records. PrivacyLens analyzes it ON-DEVICE with Gemini Nano when possible, and transparently falls back to cloud only when needed. Your data never leaves without you knowing.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🔒</text></svg>">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">🔒</span>
+      <div>
+        <h1>PrivacyLens</h1>
+        <p class="tagline">Hybrid AI — <strong>on-device first</strong>, cloud only when needed</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="pill" id="model-pill">checking model…</span>
+      <a class="github-link" href="https://github.com/dualwarez/privacylens" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel input-panel">
+      <div class="panel-head">
+        <h2>1 · Your sensitive text</h2>
+        <p class="hint">Medical notes, legal clauses, financial records, personal messages — anything you wouldn't send to a cloud server. It's analyzed <strong>on your device</strong> whenever possible.</p>
+      </div>
+      <textarea id="doc-input" spellcheck="false" placeholder="Paste your sensitive text here…&#10;&#10;Try the samples below — patient notes, a contract clause, or a salary negotiation draft."></textarea>
+      <div class="samples" id="samples">
+        <span class="samples-label">Try:</span>
+      </div>
+      <div class="actions">
+        <button id="run-btn" class="btn primary" disabled>Analyze privately 🔒</button>
+        <button id="clear-btn" class="btn ghost">Clear</button>
+      </div>
+
+      <div class="panel-head second">
+        <h2>2 · What should PrivacyLens do?</h2>
+        <p class="hint">Pick an analysis mode. Everything runs on-device unless the task genuinely needs the cloud.</p>
+      </div>
+      <div class="modes" id="modes">
+        <label class="mode"><input type="radio" name="mode" value="summarize" checked><span>📝 Summarize</span></label>
+        <label class="mode"><input type="radio" name="mode" value="redact"><span>🙈 Redact PII</span></label>
+        <label class="mode"><input type="radio" name="mode" value="sentiment"><span>💭 Sentiment</span></label>
+        <label class="mode"><input type="radio" name="mode" value="keypoints"><span>🔑 Key points</span></label>
+        <label class="mode"><input type="radio" name="mode" value="risk"><span>⚠️ Risk flags</span></label>
+      </div>
+
+      <div class="panel-head second">
+        <h2>3 · Complex task? (uses cloud fallback)</h2>
+        <p class="hint">This runs in the cloud (Gemini) — use it only for tasks that genuinely exceed on-device limits. PayGuard-style deep analysis, for example.</p>
+      </div>
+      <textarea id="complex-input" class="small" spellcheck="false" placeholder="Optional: a complex task that needs the cloud model… (e.g. 'Draft a formal legal response to this contract breach notice, citing the specific clauses violated and applicable remedies')"></textarea>
+      <div class="actions">
+        <button id="complex-btn" class="btn" disabled>Run in cloud ☁️</button>
+      </div>
+    </section>
+
+    <section class="panel results-panel">
+      <div class="panel-head">
+        <h2>Result</h2>
+        <p class="hint">The badge below tells you exactly where your data went for this analysis.</p>
+      </div>
+      <div id="privacy-badge" class="privacy-banner neutral">🔒 Ready — nothing has been sent anywhere yet.</div>
+
+      <div class="results-tabs" id="tabs" role="tablist">
+        <button class="tab active" data-tab="result" role="tab">Result</button>
+        <button class="tab" data-tab="log" role="tab">Privacy log</button>
+      </div>
+      <div class="tab-body" id="tab-result"></div>
+      <div class="tab-body hidden" id="tab-log"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p><strong>PrivacyLens</strong> — #BuildHybridAI 2026 entry. Hybrid inference via <strong>Firebase AI Logic</strong>: on-device Gemini Nano (Chrome Prompt API) with transparent cloud fallback (Gemini). Privacy log is user-visible and exportable.</p>
+  </footer>
+
+  <script src="/bundle.js"></script>
+</body>
+</html>
