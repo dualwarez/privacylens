@@ -4,6 +4,7 @@
 
 import { initializeApp } from "firebase/app";
 import { getAI, getGenerativeModel, GoogleAIBackend, InferenceMode } from "firebase/ai";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDzuDJY6-JjINLaIaOzmhTtxO7pEgSKvwA",
@@ -16,6 +17,16 @@ const firebaseConfig = {
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
+
+// App Check: debug token registered in Firebase console (hackathon allows debug tokens)
+// For production, swap to ReCaptchaEnterpriseProvider with a real site key.
+const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+if (isLocalhost) {
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  initializeAppCheck(firebaseApp, { provider: undefined, isTokenAutoRefreshEnabled: true });
+} else {
+  initializeAppCheck(firebaseApp, { provider: new ReCaptchaEnterpriseProvider("6LdxrecAAAAA-placeholder-sitekey"), isTokenAutoRefreshEnabled: true });
+}
 
 /* ---------- state ---------- */
 const state = {
