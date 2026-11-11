@@ -156,17 +156,6 @@
   function isObject(thing) {
     return thing !== null && typeof thing === "object";
   }
-  function calculateBackoffMillis(backoffCount, intervalMillis = DEFAULT_INTERVAL_MILLIS, backoffFactor = DEFAULT_BACKOFF_FACTOR) {
-    const currBaseValue = intervalMillis * Math.pow(backoffFactor, backoffCount);
-    const randomWait = Math.round(
-      // A fraction of the backoff value to add/subtract.
-      // Deviation: changes multiplication order to improve readability.
-      RANDOM_FACTOR * currBaseValue * // A random float (rounded to int by Math.round above) in the range [-1, 1]. Determines
-      // if we add or subtract.
-      (Math.random() - 0.5) * 2
-    );
-    return Math.min(MAX_VALUE_MILLIS, currBaseValue + randomWait);
-  }
   function getModularInstance(service) {
     if (service && service._delegate) {
       return service._delegate;
@@ -174,7 +163,7 @@
       return service;
     }
   }
-  var stringToByteArray$1, byteArrayToString, base64, DecodeBase64StringError, base64Encode, base64urlEncodeWithoutPadding, base64Decode, getDefaultsFromGlobal, getDefaultsFromEnvVariable, getDefaultsFromCookie, getDefaults, getDefaultAppConfig, Deferred, ERROR_NAME, FirebaseError, ErrorFactory, DEFAULT_INTERVAL_MILLIS, DEFAULT_BACKOFF_FACTOR, MAX_VALUE_MILLIS, RANDOM_FACTOR;
+  var stringToByteArray$1, byteArrayToString, base64, DecodeBase64StringError, base64Encode, base64urlEncodeWithoutPadding, base64Decode, getDefaultsFromGlobal, getDefaultsFromEnvVariable, getDefaultsFromCookie, getDefaults, getDefaultAppConfig, Deferred, ERROR_NAME, FirebaseError, ErrorFactory, MAX_VALUE_MILLIS;
   var init_index_esm = __esm({
     "node_modules/@firebase/util/dist/index.esm.js"() {
       init_postinstall();
@@ -522,10 +511,7 @@
           return error;
         }
       };
-      DEFAULT_INTERVAL_MILLIS = 1e3;
-      DEFAULT_BACKOFF_FACTOR = 2;
       MAX_VALUE_MILLIS = 4 * 60 * 60 * 1e3;
-      RANDOM_FACTOR = 0.5;
     }
   });
 
@@ -3948,40 +3934,12 @@
       setTimeout(resolve, ms);
     });
   }
-  function getRecaptcha(isEnterprise = false) {
-    if (isEnterprise) {
-      return self.grecaptcha?.enterprise;
-    }
-    return self.grecaptcha;
-  }
   function ensureActivated(app) {
     if (!getStateReference(app).activated) {
       throw ERROR_FACTORY2.create("use-before-activation", {
         appName: app.name
       });
     }
-  }
-  function getDurationString(durationInMillis) {
-    const totalSeconds = Math.round(durationInMillis / 1e3);
-    const days = Math.floor(totalSeconds / (3600 * 24));
-    const hours = Math.floor((totalSeconds - days * 3600 * 24) / 3600);
-    const minutes = Math.floor((totalSeconds - days * 3600 * 24 - hours * 3600) / 60);
-    const seconds = totalSeconds - days * 3600 * 24 - hours * 3600 - minutes * 60;
-    let result = "";
-    if (days) {
-      result += pad(days) + "d:";
-    }
-    if (hours) {
-      result += pad(hours) + "h:";
-    }
-    result += pad(minutes) + "m:" + pad(seconds) + "s";
-    return result;
-  }
-  function pad(value) {
-    if (value === 0) {
-      return "00";
-    }
-    return value >= 10 ? value.toString() : "0" + value;
   }
   async function exchangeToken({ url, body }, heartbeatServiceProvider) {
     const headers = {
@@ -4034,15 +3992,6 @@
       token: responseBody.token,
       expireTimeMillis: now + timeToLiveAsNumber,
       issuedAtTimeMillis: now
-    };
-  }
-  function getExchangeRecaptchaEnterpriseTokenRequest(app, reCAPTCHAToken) {
-    const { projectId, appId, apiKey } = app.options;
-    return {
-      url: `${BASE_ENDPOINT}/projects/${projectId}/apps/${appId}:${EXCHANGE_RECAPTCHA_ENTERPRISE_TOKEN_METHOD}?key=${apiKey}`,
-      body: {
-        "recaptcha_enterprise_token": reCAPTCHAToken
-      }
     };
   }
   function getExchangeDebugTokenRequest(app, debugToken) {
@@ -4458,108 +4407,6 @@ Firebase CLI install instructions: https://firebase.google.com/docs/cli
       removeTokenListener: (listener) => removeTokenListener(appCheck.app, listener)
     };
   }
-  function initializeEnterprise(app, siteKey) {
-    const initialized = new Deferred();
-    const state = getStateReference(app);
-    state.reCAPTCHAState = { initialized };
-    const divId = makeDiv(app);
-    const grecaptcha = getRecaptcha(true);
-    if (!grecaptcha) {
-      loadReCAPTCHAEnterpriseScript(() => {
-        const grecaptcha2 = getRecaptcha(true);
-        if (!grecaptcha2) {
-          throw new Error("no recaptcha");
-        }
-        queueWidgetRender(app, siteKey, grecaptcha2, divId, initialized);
-      });
-    } else {
-      queueWidgetRender(app, siteKey, grecaptcha, divId, initialized);
-    }
-    return initialized.promise;
-  }
-  function queueWidgetRender(app, siteKey, grecaptcha, container, initialized) {
-    grecaptcha.ready(() => {
-      renderInvisibleWidget(app, siteKey, grecaptcha, container);
-      initialized.resolve(grecaptcha);
-    });
-  }
-  function makeDiv(app) {
-    const divId = `fire_app_check_${app.name}`;
-    const invisibleDiv = document.createElement("div");
-    invisibleDiv.id = divId;
-    invisibleDiv.style.display = "none";
-    document.body.appendChild(invisibleDiv);
-    return divId;
-  }
-  async function getToken$1(app) {
-    ensureActivated(app);
-    const reCAPTCHAState = getStateReference(app).reCAPTCHAState;
-    const recaptcha = await reCAPTCHAState.initialized.promise;
-    return new Promise((resolve, _reject) => {
-      const reCAPTCHAState2 = getStateReference(app).reCAPTCHAState;
-      recaptcha.ready(() => {
-        resolve(
-          // widgetId is guaranteed to be available if reCAPTCHAState.initialized.promise resolved.
-          recaptcha.execute(reCAPTCHAState2.widgetId, {
-            action: "fire_app_check"
-          })
-        );
-      });
-    });
-  }
-  function renderInvisibleWidget(app, siteKey, grecaptcha, container) {
-    const widgetId = grecaptcha.render(container, {
-      sitekey: siteKey,
-      size: "invisible",
-      // Success callback - set state
-      callback: () => {
-        getStateReference(app).reCAPTCHAState.succeeded = true;
-      },
-      // Failure callback - set state
-      "error-callback": () => {
-        getStateReference(app).reCAPTCHAState.succeeded = false;
-      }
-    });
-    const state = getStateReference(app);
-    state.reCAPTCHAState = {
-      ...state.reCAPTCHAState,
-      // state.reCAPTCHAState is set in the initialize()
-      widgetId
-    };
-  }
-  function loadReCAPTCHAEnterpriseScript(onload) {
-    const script = document.createElement("script");
-    script.src = RECAPTCHA_ENTERPRISE_URL + "?render=explicit";
-    script.onload = onload;
-    document.head.appendChild(script);
-  }
-  function setBackoff(httpStatus, throttleData) {
-    if (httpStatus === 404 || httpStatus === 403) {
-      return {
-        backoffCount: 1,
-        allowRequestsAfter: Date.now() + ONE_DAY,
-        httpStatus
-      };
-    } else {
-      const backoffCount = throttleData ? throttleData.backoffCount : 0;
-      const backoffMillis = calculateBackoffMillis(backoffCount, 1e3, 2);
-      return {
-        backoffCount: backoffCount + 1,
-        allowRequestsAfter: Date.now() + backoffMillis,
-        httpStatus
-      };
-    }
-  }
-  function throwIfThrottled(throttleData) {
-    if (throttleData) {
-      if (Date.now() - throttleData.allowRequestsAfter <= 0) {
-        throw ERROR_FACTORY2.create("throttled", {
-          time: getDurationString(throttleData.allowRequestsAfter - Date.now()),
-          httpStatus: throttleData.httpStatus
-        });
-      }
-    }
-  }
   function initializeAppCheck(app = getApp(), options) {
     app = getModularInstance(app);
     const provider = _getProvider(app, "app-check");
@@ -4637,7 +4484,7 @@ Firebase CLI install instructions: https://firebase.google.com/docs/cli
     ));
     registerVersion(name4, version3);
   }
-  var APP_CHECK_STATES, DEFAULT_STATE, DEBUG_STATE, BASE_ENDPOINT, EXCHANGE_RECAPTCHA_ENTERPRISE_TOKEN_METHOD, EXCHANGE_DEBUG_TOKEN_METHOD, TOKEN_REFRESH_TIME, ONE_DAY, Refresher, ERRORS2, ERROR_FACTORY2, DB_NAME2, DB_VERSION2, STORE_NAME2, DEBUG_TOKEN_KEY, dbPromise2, logger3, defaultTokenErrorData, AppCheckService, name4, version3, RECAPTCHA_ENTERPRISE_URL, ReCaptchaEnterpriseProvider, APP_CHECK_NAME, APP_CHECK_NAME_INTERNAL;
+  var APP_CHECK_STATES, DEFAULT_STATE, DEBUG_STATE, BASE_ENDPOINT, EXCHANGE_DEBUG_TOKEN_METHOD, TOKEN_REFRESH_TIME, ONE_DAY, Refresher, ERRORS2, ERROR_FACTORY2, DB_NAME2, DB_VERSION2, STORE_NAME2, DEBUG_TOKEN_KEY, dbPromise2, logger3, defaultTokenErrorData, AppCheckService, name4, version3, APP_CHECK_NAME, APP_CHECK_NAME_INTERNAL;
   var init_index_esm8 = __esm({
     "node_modules/@firebase/app-check/dist/esm/index.esm.js"() {
       init_index_esm4();
@@ -4654,7 +4501,6 @@ Firebase CLI install instructions: https://firebase.google.com/docs/cli
         enabled: false
       };
       BASE_ENDPOINT = "https://content-firebaseappcheck.googleapis.com/v1";
-      EXCHANGE_RECAPTCHA_ENTERPRISE_TOKEN_METHOD = "exchangeRecaptchaEnterpriseToken";
       EXCHANGE_DEBUG_TOKEN_METHOD = "exchangeDebugToken";
       TOKEN_REFRESH_TIME = {
         /**
@@ -4804,78 +4650,6 @@ Firebase CLI install instructions: https://firebase.google.com/docs/cli
       };
       name4 = "@firebase/app-check";
       version3 = "0.13.1";
-      RECAPTCHA_ENTERPRISE_URL = "https://www.google.com/recaptcha/enterprise.js";
-      ReCaptchaEnterpriseProvider = class _ReCaptchaEnterpriseProvider {
-        /**
-         * Create a ReCaptchaEnterpriseProvider instance.
-         * @param siteKey - reCAPTCHA Enterprise score-based site key.
-         */
-        constructor(_siteKey) {
-          this._siteKey = _siteKey;
-          this._throttleData = null;
-        }
-        /**
-         * Returns an App Check token.
-         * @internal
-         */
-        async getToken(isLimitedUse = false) {
-          throwIfThrottled(this._throttleData);
-          const attestedClaimsToken = await getToken$1(this._app).catch((_e) => {
-            throw ERROR_FACTORY2.create(
-              "recaptcha-error"
-              /* AppCheckError.RECAPTCHA_ERROR */
-            );
-          });
-          if (!getStateReference(this._app).reCAPTCHAState?.succeeded) {
-            throw ERROR_FACTORY2.create(
-              "recaptcha-error"
-              /* AppCheckError.RECAPTCHA_ERROR */
-            );
-          }
-          let result;
-          try {
-            const request = getExchangeRecaptchaEnterpriseTokenRequest(this._app, attestedClaimsToken);
-            if (isLimitedUse) {
-              request.body["limited_use"] = true;
-            }
-            result = await exchangeToken(request, this._heartbeatServiceProvider);
-          } catch (e) {
-            if (e.code?.includes(
-              "fetch-status-error"
-              /* AppCheckError.FETCH_STATUS_ERROR */
-            )) {
-              this._throttleData = setBackoff(Number(e.customData?.httpStatus), this._throttleData);
-              throw ERROR_FACTORY2.create("initial-throttle", {
-                time: getDurationString(this._throttleData.allowRequestsAfter - Date.now()),
-                httpStatus: this._throttleData.httpStatus
-              });
-            } else {
-              throw e;
-            }
-          }
-          this._throttleData = null;
-          return result;
-        }
-        /**
-         * @internal
-         */
-        initialize(app) {
-          this._app = app;
-          this._heartbeatServiceProvider = _getProvider(app, "heartbeat");
-          initializeEnterprise(app, this._siteKey).catch(() => {
-          });
-        }
-        /**
-         * @internal
-         */
-        isEqual(otherProvider) {
-          if (otherProvider instanceof _ReCaptchaEnterpriseProvider) {
-            return this._siteKey === otherProvider._siteKey;
-          } else {
-            return false;
-          }
-        }
-      };
       APP_CHECK_NAME = "app-check";
       APP_CHECK_NAME_INTERNAL = "app-check-internal";
       registerAppCheck();
@@ -4905,13 +4679,8 @@ Firebase CLI install instructions: https://firebase.google.com/docs/cli
         measurementId: "G-MX6BPDB6DX"
       };
       var firebaseApp = initializeApp(firebaseConfig);
-      var isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-      if (isLocalhost) {
-        self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-        initializeAppCheck(firebaseApp, { provider: void 0, isTokenAutoRefreshEnabled: true });
-      } else {
-        initializeAppCheck(firebaseApp, { provider: new ReCaptchaEnterpriseProvider("6LdxrecAAAAA-placeholder-sitekey"), isTokenAutoRefreshEnabled: true });
-      }
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = "privacylens-hybrid-debug-2026";
+      initializeAppCheck(firebaseApp, { isTokenAutoRefreshEnabled: true });
       var state = {
         running: false,
         modelReady: false,
